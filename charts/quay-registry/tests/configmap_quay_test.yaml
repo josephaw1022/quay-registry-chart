@@ -1,0 +1,34 @@
+suite: Quay ConfigMap Tests
+templates:
+  - templates/configmap-quay.yaml
+tests:
+  - it: should render default config.yaml in ConfigMap
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "SERVER_HOSTNAME: \"quay.example.com\""
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "FEATURE_PROXY_CACHE: true"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "BUILDLOGS_REDIS:"
+
+  - it: should render OIDC configuration when enabled
+    set:
+      config:
+        oidc:
+          enabled: true
+          clientId: "my-client-id"
+          clientSecret: "my-client-secret"
+          oidcServer: "https://login.microsoftonline.com/tenant-id/v2.0"
+          serviceName: "Entra ID"
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "OIDC_LOGIN_CONFIG:"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "CLIENT_ID: \"my-client-id\""

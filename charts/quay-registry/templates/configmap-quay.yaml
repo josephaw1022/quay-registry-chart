@@ -1,0 +1,98 @@
+{{- if not .Values.config.existingSecret -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "quay-registry.fullname" . }}-config
+  labels:
+    {{- include "quay-registry.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    SERVER_HOSTNAME: {{ .Values.config.serverHostname | quote }}
+    REGISTRY_TITLE: {{ .Values.config.registryTitle | quote }}
+    REGISTRY_TITLE_SHORT: {{ .Values.config.registryTitleShort | quote }}
+    SETUP_COMPLETE: true
+    AUTHENTICATION_TYPE: {{ .Values.config.authenticationType | quote }}
+    PREFERRED_URL_SCHEME: {{ .Values.config.preferredUrlScheme | quote }}
+
+    # Feature Flags
+    FEATURE_BUILD_SUPPORT: {{ .Values.config.features.buildSupport }}
+    FEATURE_USER_INITIALIZE: {{ .Values.config.features.userInitialize }}
+    FEATURE_USER_CREATION: {{ .Values.config.features.userCreation }}
+    FEATURE_DIRECT_LOGIN: {{ .Values.config.features.directLogin }}
+    FEATURE_ANONYMOUS_ACCESS: {{ .Values.config.features.anonymousAccess }}
+    FEATURE_MAILING: {{ .Values.config.features.mailing }}
+
+    # Proxy Cache & Garbage Collection
+    FEATURE_PROXY_CACHE: {{ .Values.config.features.proxyCache }}
+    FEATURE_GARBAGE_COLLECTION: {{ .Values.config.features.garbageCollection }}
+    FEATURE_CHANGE_TAG_EXPIRATION: {{ .Values.config.features.changeTagExpiration }}
+    DEFAULT_TAG_EXPIRATION: {{ .Values.config.tagExpiration.default | quote }}
+    TAG_EXPIRATION_OPTIONS:
+      {{- toYaml .Values.config.tagExpiration.options | nindent 6 }}
+
+    {{- if .Values.config.features.securityScanner }}
+    # Security Scanner (Clair)
+    FEATURE_SECURITY_SCANNER: true
+    SECURITY_SCANNER_V4_ENDPOINT: {{ printf "http://%s:%d" (include "quay-registry.clairFullname" .) (int .Values.clair.port) | quote }}
+    SECURITY_SCANNER_INDEXING_INTERVAL: {{ .Values.clair.scanner.indexingInterval }}
+    {{- end }}
+
+    SUPER_USERS:
+      {{- toYaml .Values.config.superUsers | nindent 6 }}
+
+    DB_CONNECTION_ARGS:
+      autorollback: true
+      threadlocals: true
+
+    {{- if .Values.redis.host }}
+    # Redis / Valkey External Cache Configuration
+    BUILDLOGS_REDIS:
+      host: {{ .Values.redis.host | quote }}
+      port: {{ .Values.redis.port | default 6379 }}
+      {{- if .Values.redis.password }}
+      password: {{ .Values.redis.password | quote }}
+      {{- end }}
+    USER_EVENTS_REDIS:
+      host: {{ .Values.redis.host | quote }}
+      port: {{ .Values.redis.port | default 6379 }}
+      {{- if .Values.redis.password }}
+      password: {{ .Values.redis.password | quote }}
+      {{- end }}
+    {{- end }}
+
+    # Storage Backend
+    DISTRIBUTED_STORAGE_PREFERENCE:
+      - default
+    DISTRIBUTED_STORAGE_CONFIG:
+      default:
+        {{- if eq .Values.config.storage.type "LocalStorage" }}
+        - LocalStorage
+        - storage_path: {{ .Values.config.storage.localStoragePath | quote }}
+        {{- else if eq .Values.config.storage.type "S3" }}
+        - S3Storage
+        - s3_bucket: {{ .Values.config.storage.s3.bucket | quote }}
+          s3_access_key: {{ .Values.config.storage.s3.accessKey | quote }}
+          s3_secret_key: {{ .Values.config.storage.s3.secretKey | quote }}
+          host: {{ .Values.config.storage.s3.host | quote }}
+          port: {{ .Values.config.storage.s3.port | default 443 }}
+          is_secure: {{ .Values.config.storage.s3.isSecure | default true }}
+          storage_path: /datastorage/registry
+        {{- end }}
+
+    {{- if .Values.config.oidc.enabled }}
+    # OpenID Connect / Microsoft Entra ID Authentication
+    OIDC_LOGIN_CONFIG:
+      CLIENT_ID: {{ .Values.config.oidc.clientId | quote }}
+      CLIENT_SECRET: {{ .Values.config.oidc.clientSecret | quote }}
+      OIDC_SERVER: {{ .Values.config.oidc.oidcServer | quote }}
+      SERVICE_NAME: {{ .Values.config.oidc.serviceName | quote }}
+      SERVICE_ICON: {{ .Values.config.oidc.serviceIcon | quote }}
+      LOGIN_SCOPES:
+        {{- toYaml .Values.config.oidc.loginScopes | nindent 8 }}
+    {{- end }}
+
+    {{- if .Values.config.extraConfig }}
+    # Extra User Configuration
+    {{- toYaml .Values.config.extraConfig | nindent 4 }}
+    {{- end }}
+{{- end }}

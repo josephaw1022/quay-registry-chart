@@ -1,0 +1,390 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QuayRegistryValues",
+  "description": "Values schema for the quay-registry Helm chart",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1
+    },
+    "image": {
+      "type": "object",
+      "required": ["repository", "pullPolicy"],
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "Never", "IfNotPresent"]
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "automount": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "podAnnotations": {
+      "type": "object"
+    },
+    "podLabels": {
+      "type": "object"
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "securityContext": {
+      "type": "object"
+    },
+    "service": {
+      "type": "object",
+      "required": ["type", "port"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": {
+          "type": "integer"
+        },
+        "targetPort": {
+          "type": "integer"
+        },
+        "httpsPort": {
+          "type": "integer"
+        },
+        "httpsTargetPort": {
+          "type": "integer"
+        },
+        "annotations": {
+          "type": "object"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "pathType": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "tls": {
+          "type": "object"
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "affinity": {
+      "type": "object"
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "accessModes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "size": {
+          "type": "string"
+        },
+        "existingClaim": {
+          "type": "string"
+        },
+        "mountPath": {
+          "type": "string"
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "description": "Database connection configuration. PostgreSQL is not bundled in the chart.",
+      "properties": {
+        "existingSecret": {
+          "type": "string",
+          "description": "Name of existing Kubernetes secret containing DB connection string"
+        },
+        "existingSecretUriKey": {
+          "type": "string",
+          "default": "DB_URI"
+        },
+        "uri": {
+          "type": "string",
+          "description": "Direct PostgreSQL connection URI"
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "description": "External Redis / Valkey cache configuration.",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "default": 6379
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "existingSecret": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string"
+        },
+        "databaseSecretKey": {
+          "type": "string"
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "existingSecret": {
+          "type": "string"
+        },
+        "serverHostname": {
+          "type": "string"
+        },
+        "registryTitle": {
+          "type": "string"
+        },
+        "registryTitleShort": {
+          "type": "string"
+        },
+        "preferredUrlScheme": {
+          "type": "string",
+          "enum": ["http", "https"]
+        },
+        "authenticationType": {
+          "type": "string"
+        },
+        "superUsers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "buildSupport": { "type": "boolean" },
+            "userInitialize": { "type": "boolean" },
+            "userCreation": { "type": "boolean" },
+            "directLogin": { "type": "boolean" },
+            "anonymousAccess": { "type": "boolean" },
+            "mailing": { "type": "boolean" },
+            "proxyCache": { "type": "boolean" },
+            "garbageCollection": { "type": "boolean" },
+            "changeTagExpiration": { "type": "boolean" },
+            "securityScanner": { "type": "boolean" }
+          }
+        },
+        "tagExpiration": {
+          "type": "object",
+          "properties": {
+            "default": { "type": "string" },
+            "options": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "localStoragePath": { "type": "string" },
+            "s3": { "type": "object" }
+          }
+        },
+        "oidc": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "clientId": { "type": "string" },
+            "clientSecret": { "type": "string" },
+            "oidcServer": { "type": "string" },
+            "serviceName": { "type": "string" },
+            "serviceIcon": { "type": "string" },
+            "loginScopes": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "extraConfig": {
+          "type": "object"
+        }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "existingSecret": { "type": "string" }
+      }
+    },
+    "clair": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": {
+          "type": "object",
+          "required": ["repository", "pullPolicy"],
+          "properties": {
+            "repository": { "type": "string" },
+            "pullPolicy": { "type": "string" },
+            "tag": { "type": "string" }
+          }
+        },
+        "port": { "type": "integer" },
+        "introspectionPort": { "type": "integer" },
+        "logLevel": { "type": "string" },
+        "auth": {
+          "type": "object",
+          "properties": {
+            "pskBase64": { "type": "string" },
+            "existingSecret": { "type": "string" },
+            "existingSecretKey": { "type": "string" }
+          }
+        },
+        "database": {
+          "type": "object",
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "existingSecretUriKey": { "type": "string" },
+            "connstring": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" },
+        "podSecurityContext": { "type": "object" },
+        "securityContext": { "type": "object" },
+        "scanner": { "type": "object" }
+      }
+    }
+  }
+}

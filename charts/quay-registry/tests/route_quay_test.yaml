@@ -1,0 +1,31 @@
+suite: Quay OpenShift Route Tests
+templates:
+  - templates/route-quay.yaml
+tests:
+  - it: should not render Route when disabled
+    set:
+      route:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render OpenShift Route when enabled
+    set:
+      route:
+        enabled: true
+        host: quay.apps.okd.kubesoar.com
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Route
+      - equal:
+          path: spec.host
+          value: quay.apps.okd.kubesoar.com
+      - equal:
+          path: spec.tls.termination
+          value: edge

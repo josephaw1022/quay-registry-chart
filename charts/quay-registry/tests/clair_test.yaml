@@ -1,0 +1,39 @@
+suite: Clair Component Tests
+templates:
+  - templates/clair/deployment-clair.yaml
+  - templates/clair/service-clair.yaml
+  - templates/clair/configmap-clair.yaml
+  - templates/clair/secret-clair.yaml
+tests:
+  - it: should render Clair resources when enabled
+    asserts:
+      - isKind:
+          of: Deployment
+        template: templates/clair/deployment-clair.yaml
+      - isKind:
+          of: Service
+        template: templates/clair/service-clair.yaml
+      - isKind:
+          of: ConfigMap
+        template: templates/clair/configmap-clair.yaml
+      - isKind:
+          of: Secret
+        template: templates/clair/secret-clair.yaml
+
+  - it: should not render Clair resources when disabled
+    set:
+      clair:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: templates/clair/deployment-clair.yaml
+      - hasDocuments:
+          count: 0
+        template: templates/clair/service-clair.yaml
+      - hasDocuments:
+          count: 0
+        template: templates/clair/configmap-clair.yaml
+      - hasDocuments:
+          count: 0
+        template: templates/clair/secret-clair.yaml

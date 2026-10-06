@@ -1,0 +1,85 @@
+suite: Quay Deployment Tests
+templates:
+  - templates/deployment-quay.yaml
+tests:
+  - it: should render default Quay deployment correctly
+    asserts:
+      - isKind:
+          of: Deployment
+      - matchRegex:
+          path: metadata.name
+          pattern: -quay-registry$
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: quay-registry
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: quay.io/projectquay/quay:v3.13.0
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8080
+      - equal:
+          path: spec.template.spec.containers[0].ports[1].containerPort
+          value: 8443
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 1001
+
+  - it: should set custom replicas and resources
+    set:
+      replicaCount: 3
+      resources:
+        limits:
+          cpu: 4000m
+          memory: 8Gi
+        requests:
+          cpu: 1000m
+          memory: 2Gi
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 4000m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 8Gi
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 1000m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 2Gi
+
+  - it: should support custom database existingSecret
+    set:
+      database:
+        existingSecret: my-custom-db-secret
+        existingSecretUriKey: CONNECTION_STRING
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: QUAY_DB_URI
+            valueFrom:
+              secretKeyRef:
+                name: my-custom-db-secret
+                key: CONNECTION_STRING
+
+  - it: should mount pre-existing config bundle secret directly when config.existingSecret is set
+    set:
+      config:
+        existingSecret: preconfigured-quay-bundle
+    asserts:
+      - isNull:
+          path: spec.template.spec.initContainers
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-stack
+            secret:
+              secretName: preconfigured-quay-bundle

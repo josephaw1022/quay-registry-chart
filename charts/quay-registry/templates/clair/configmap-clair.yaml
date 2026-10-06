@@ -1,0 +1,33 @@
+{{- if .Values.clair.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "quay-registry.fullname" . }}-clair-config
+  labels:
+    {{- include "quay-registry.clairLabels" . | nindent 4 }}
+data:
+  config.yaml: |
+    http_listen_addr: ":{{ .Values.clair.port }}"
+    introspection_addr: ":{{ .Values.clair.introspectionPort }}"
+    log_level: {{ .Values.clair.logLevel | quote }}
+
+    indexer:
+      scanlock_retry: {{ .Values.clair.scanner.scanlockRetry }}
+      layer_scan_concurrency: {{ .Values.clair.scanner.layerScanConcurrency }}
+      migrations: true
+
+    matcher:
+      indexer_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+      migrations: true
+      period: "30m"
+
+    notifier:
+      indexer_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+      matcher_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+      migrations: true
+
+    auth:
+      psk:
+        iss:
+          - "quay"
+{{- end }}

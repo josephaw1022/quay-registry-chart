@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["quay.io/projectquay/quay", "quay.io/projectquay/clair"],
+      "groupName": "quay-stack-container-images",
+      "automerge": false
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions-dependencies"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^charts/quay-registry/values\\.yaml$"],
+      "matchStrings": [
+        "repository:\\s*(?<depName>quay\\.io/[a-zA-Z0-9_/-]+)\\s*\\n\\s*pullPolicy:\\s*[a-zA-Z]+\\s*\\n\\s*tag:\\s*\"?(?<currentValue>[a-zA-Z0-9_.-]+)\"?"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^charts/quay-registry/Chart\\.yaml$"],
+      "matchStrings": [
+        "appVersion:\\s*\"?(?<currentValue>v?[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9.]+)?)\"?"
+      ],
+      "depNameTemplate": "quay.io/projectquay/quay",
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{{- if .Values.clair.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "quay-registry.clairFullname" . }}
+  labels:
+    {{- include "quay-registry.clairLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "quay-registry.clairSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ .Values.clair | toYaml | sha256sum }}
+      labels:
+        {{- include "quay-registry.clairSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.clair.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: init-clair-config
+          image: "{{ .Values.clair.image.repository }}:{{ .Values.clair.image.tag }}"
+          imagePullPolicy: {{ .Values.clair.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cat <<EOF > /tmp/clair/config.yaml
+              http_listen_addr: ":{{ .Values.clair.port }}"
+              introspection_addr: ":{{ .Values.clair.introspectionPort }}"
+              log_level: {{ .Values.clair.logLevel | quote }}
+
+              indexer:
+                connstring: "$CLAIR_DB_URI"
+                scanlock_retry: {{ .Values.clair.scanner.scanlockRetry }}
+                layer_scan_concurrency: {{ .Values.clair.scanner.layerScanConcurrency }}
+                migrations: true
+
+              matcher:
+                connstring: "$CLAIR_DB_URI"
+                indexer_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+                migrations: true
+                period: "30m"
+
+              notifier:
+                connstring: "$CLAIR_DB_URI"
+                indexer_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+                matcher_addr: "http://127.0.0.1:{{ .Values.clair.port }}/"
+                migrations: true
+
+              auth:
+                psk:
+                  key: "$CLAIR_PSK_BASE64"
+                  iss:
+                    - "quay"
+              EOF
+          env:
+            - name: CLAIR_PSK_BASE64
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.clair.auth.existingSecret }}
+                  name: {{ .Values.clair.auth.existingSecret }}
+                  key: {{ .Values.clair.auth.existingSecretKey }}
+                  {{- else }}
+                  name: {{ include "quay-registry.fullname" . }}-clair-secret
+                  key: CLAIR_PSK_BASE64
+                  {{- end }}
+            {{- if .Values.clair.database.existingSecret }}
+            - name: CLAIR_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.clair.database.existingSecret }}
+                  key: {{ .Values.clair.database.existingSecretUriKey }}
+            {{- else if .Values.clair.database.connstring }}
+            - name: CLAIR_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "quay-registry.fullname" . }}-clair-secret
+                  key: CLAIR_DB_URI
+            {{- end }}
+          volumeMounts:
+            - name: clair-config-dir
+              mountPath: /tmp/clair
+      containers:
+        - name: clair
+          securityContext:
+            {{- toYaml .Values.clair.securityContext | nindent 12 }}
+          image: "{{ .Values.clair.image.repository }}:{{ .Values.clair.image.tag }}"
+          imagePullPolicy: {{ .Values.clair.image.pullPolicy }}
+          env:
+            - name: CLAIR_CONF
+              value: /clair/config.yaml
+            - name: CLAIR_MODE
+              value: combo
+            - name: TMPDIR
+              value: /tmp
+          ports:
+            - name: http
+              containerPort: {{ .Values.clair.port }}
+              protocol: TCP
+            - name: introspection
+              containerPort: {{ .Values.clair.introspectionPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: introspection
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: introspection
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.clair.resources | nindent 12 }}
+          volumeMounts:
+            - name: clair-config-dir
+              mountPath: /clair
+              readOnly: true
+            - name: tmp-dir
+              mountPath: /tmp
+      volumes:
+        - name: clair-config-dir
+          emptyDir: {}
+        - name: tmp-dir
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

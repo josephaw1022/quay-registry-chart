@@ -1,0 +1,34 @@
+suite: Quay Service Tests
+templates:
+  - templates/service-quay.yaml
+tests:
+  - it: should render default ClusterIP service
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+      - equal:
+          path: spec.ports[1].port
+          value: 8443
+
+  - it: should support NodePort or LoadBalancer service type
+    set:
+      service:
+        type: LoadBalancer
+        port: 80
+        httpsPort: 443
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+      - equal:
+          path: spec.ports[1].port
+          value: 443

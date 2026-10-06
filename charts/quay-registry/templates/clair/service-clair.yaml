@@ -1,0 +1,21 @@
+{{- if .Values.clair.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "quay-registry.clairFullname" . }}
+  labels:
+    {{- include "quay-registry.clairLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.clair.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.clair.introspectionPort }}
+      targetPort: introspection
+      protocol: TCP
+      name: introspection
+  selector:
+    {{- include "quay-registry.clairSelectorLabels" . | nindent 4 }}
+{{- end }}

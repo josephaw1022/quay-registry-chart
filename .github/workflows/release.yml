@@ -1,0 +1,53 @@
+name: Publish OCI Helm Chart to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Package & Publish OCI Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.18.3
+
+      - name: Install helm-unittest plugin
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest
+
+      - name: Run Lint and Unit Tests
+        run: |
+          helm lint charts/quay-registry
+          helm unittest charts/quay-registry
+
+      - name: Package Helm Chart
+        run: |
+          mkdir -p dist
+          helm package charts/quay-registry --destination dist/
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Publish OCI Chart to GHCR
+        run: |
+          # Lowercase the repository owner for GHCR compatibility
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          for pkg in dist/*.tgz; do
+            echo "Pushing $pkg to oci://ghcr.io/${OWNER}/charts..."
+            helm push "$pkg" "oci://ghcr.io/${OWNER}/charts"
+          done

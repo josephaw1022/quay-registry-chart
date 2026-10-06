@@ -1,0 +1,254 @@
+# Default values for quay-registry.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: quay.io/projectquay/quay
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "v3.13.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  httpsPort: 8443
+  httpsTargetPort: 8443
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: quay.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: quay-tls-cert
+  #    hosts:
+  #      - quay.example.com
+
+route:
+  # OpenShift Route support
+  enabled: false
+  host: quay.example.com
+  annotations: {}
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 50Gi
+  existingClaim: ""
+  mountPath: /datastorage
+
+# ==============================================================================
+# Database Configuration
+# NOTE: PostgreSQL is NOT packaged with this chart.
+# You must provide connection credentials to an external or pre-existing PostgreSQL database.
+# ==============================================================================
+database:
+  # Name of pre-existing Kubernetes Secret containing the database connection URI
+  # Recommended for production deployments.
+  existingSecret: ""
+  # Key inside existingSecret containing the connection string (e.g. postgresql://user:pass@host:5432/dbname)
+  existingSecretUriKey: "DB_URI"
+  # Direct connection URI (used if existingSecret is not provided)
+  uri: ""
+
+# ==============================================================================
+# Redis / Valkey External Cache Configuration
+# NOTE: Valkey / Redis is NOT packaged with this chart.
+# Configure connection to an external or pre-existing Redis/Valkey instance.
+# ==============================================================================
+redis:
+  # Hostname or IP of the external Redis / Valkey instance
+  host: "quay-valkey.example.com"
+  port: 6379
+  password: ""
+
+# ==============================================================================
+# Quay Secret Keys Configuration
+# ==============================================================================
+secrets:
+  # Name of pre-existing Kubernetes Secret containing SECRET_KEY and DATABASE_SECRET_KEY
+  existingSecret: ""
+  # Application secret key (50+ random characters)
+  secretKey: "k8s_homelab_quay_secret_key_fixed_for_persistency_1234567890abcdef"
+  # Database secret key (50+ random characters)
+  databaseSecretKey: "k8s_homelab_quay_db_secret_key_fixed_for_persistency_1234567890abcd"
+
+# ==============================================================================
+# Quay Application Configuration
+# ==============================================================================
+config:
+  # Name of a pre-existing Secret containing the full Quay config bundle (config.yaml, ssl.cert, ssl.key)
+  # If specified, this secret is mounted directly into /conf/stack and dynamic config generation is skipped.
+  existingSecret: ""
+
+  serverHostname: "quay.example.com"
+  registryTitle: "Homelab Quay Registry"
+  registryTitleShort: "Quay"
+  preferredUrlScheme: "https"
+  authenticationType: "Database"
+
+  superUsers:
+    - admin
+    - jwhiteaker
+
+  features:
+    buildSupport: false
+    userInitialize: true
+    userCreation: true
+    directLogin: true
+    anonymousAccess: true
+    mailing: false
+    proxyCache: true
+    garbageCollection: true
+    changeTagExpiration: true
+    securityScanner: true
+
+  tagExpiration:
+    default: "14d"
+    options:
+      - "0s"
+      - "1d"
+      - "7d"
+      - "14d"
+      - "30d"
+      - "60d"
+      - "90d"
+
+  storage:
+    type: "LocalStorage"
+    localStoragePath: "/datastorage/registry"
+    # Configuration for S3 storage driver (if type is S3)
+    s3:
+      bucket: ""
+      accessKey: ""
+      secretKey: ""
+      host: ""
+      port: 443
+      isSecure: true
+
+  # OpenID Connect / Microsoft Entra ID Authentication configuration
+  oidc:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    oidcServer: ""
+    serviceName: "Microsoft Entra ID"
+    serviceIcon: "microsoft"
+    loginScopes:
+      - openid
+      - profile
+      - email
+
+  # Extra configuration key-value pairs injected directly into config.yaml
+  extraConfig: {}
+
+# TLS Certificate configuration for Quay container
+tls:
+  enabled: false
+  # Name of existing TLS secret containing tls.crt (ssl.cert) and tls.key (ssl.key)
+  existingSecret: ""
+
+# ==============================================================================
+# Clair Vulnerability Security Scanner Component
+# ==============================================================================
+clair:
+  enabled: true
+  image:
+    repository: quay.io/projectquay/clair
+    pullPolicy: IfNotPresent
+    tag: "4.9.0"
+  port: 6060
+  introspectionPort: 6061
+  logLevel: "info"
+  auth:
+    pskBase64: "azhzX2hvbWVsYWJfcXVheV9jbGFpcl9wc2tfc2VjcmV0X2tleV8xMjM0NTY3ODkwYWJjZGVm"
+    existingSecret: ""
+    existingSecretKey: "CLAIR_PSK_BASE64"
+  database:
+    # Existing secret containing Clair PostgreSQL connection string
+    existingSecret: ""
+    existingSecretUriKey: "CLAIR_DB_URI"
+    # Connection string format: host=... port=5432 dbname=clair user=quay password=... sslmode=disable
+    connstring: ""
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  podSecurityContext:
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsNonRoot: true
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+  scanner:
+    indexingInterval: 30
+    scanlockRetry: 10
+    layerScanConcurrency: 5

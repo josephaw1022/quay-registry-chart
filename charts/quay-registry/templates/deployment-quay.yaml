@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "quay-registry.fullname" . }}
+  labels:
+    {{- include "quay-registry.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "quay-registry.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ .Values.config | toYaml | sha256sum }}
+        checksum/secrets: {{ .Values.secrets | toYaml | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "quay-registry.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "quay-registry.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if not .Values.config.existingSecret }}
+      initContainers:
+        - name: init-config
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              cp /tmp/base-config/config.yaml /conf/stack/config.yaml
+              
+              if [ -n "$QUAY_DB_URI" ]; then
+                echo "DB_URI: \"$QUAY_DB_URI\"" >> /conf/stack/config.yaml
+              fi
+              if [ -n "$QUAY_SECRET_KEY" ]; then
+                echo "SECRET_KEY: \"$QUAY_SECRET_KEY\"" >> /conf/stack/config.yaml
+              fi
+              if [ -n "$QUAY_DATABASE_SECRET_KEY" ]; then
+                echo "DATABASE_SECRET_KEY: \"$QUAY_DATABASE_SECRET_KEY\"" >> /conf/stack/config.yaml
+              fi
+              if [ -n "$CLAIR_PSK_BASE64" ]; then
+                echo "SECURITY_SCANNER_V4_PSK: \"$CLAIR_PSK_BASE64\"" >> /conf/stack/config.yaml
+              fi
+
+              if [ -f /tmp/tls/tls.crt ] && [ -f /tmp/tls/tls.key ]; then
+                cp /tmp/tls/tls.crt /conf/stack/ssl.cert
+                cp /tmp/tls/tls.key /conf/stack/ssl.key
+              fi
+
+              mkdir -p /datastorage/registry
+          env:
+            - name: QUAY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "quay-registry.secretName" . }}
+                  key: SECRET_KEY
+            - name: QUAY_DATABASE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "quay-registry.secretName" . }}
+                  key: DATABASE_SECRET_KEY
+            {{- if .Values.database.existingSecret }}
+            - name: QUAY_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret }}
+                  key: {{ .Values.database.existingSecretUriKey }}
+            {{- else if .Values.database.uri }}
+            - name: QUAY_DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "quay-registry.secretName" . }}
+                  key: DB_URI
+            {{- end }}
+            {{- if .Values.config.features.securityScanner }}
+            - name: CLAIR_PSK_BASE64
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.clair.auth.existingSecret }}
+                  name: {{ .Values.clair.auth.existingSecret }}
+                  key: {{ .Values.clair.auth.existingSecretKey }}
+                  {{- else }}
+                  name: {{ include "quay-registry.fullname" . }}-clair-secret
+                  key: CLAIR_PSK_BASE64
+                  {{- end }}
+            {{- end }}
+          volumeMounts:
+            - name: base-config
+              mountPath: /tmp/base-config
+            - name: config-stack
+              mountPath: /conf/stack
+            {{- if .Values.tls.existingSecret }}
+            - name: tls-certs
+              mountPath: /tmp/tls
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: storage
+              mountPath: /datastorage
+            {{- end }}
+      {{- end }}
+      containers:
+        - name: quay-registry
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+            - name: https
+              containerPort: {{ .Values.service.httpsTargetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health/instance
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health/instance
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-stack
+              mountPath: /conf/stack
+              readOnly: true
+            {{- if .Values.persistence.enabled }}
+            - name: storage
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+      volumes:
+        {{- if .Values.config.existingSecret }}
+        - name: config-stack
+          secret:
+            secretName: {{ .Values.config.existingSecret }}
+        {{- else }}
+        - name: config-stack
+          emptyDir: {}
+        - name: base-config
+          configMap:
+            name: {{ include "quay-registry.fullname" . }}-config
+        {{- if .Values.tls.existingSecret }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.existingSecret }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-storage" (include "quay-registry.fullname" .)) }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

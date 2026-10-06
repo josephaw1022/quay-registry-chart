@@ -1,0 +1,40 @@
+suite: Quay Ingress Tests
+templates:
+  - templates/ingress-quay.yaml
+tests:
+  - it: should not render Ingress when disabled
+    set:
+      ingress:
+        enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render Ingress when enabled
+    set:
+      ingress:
+        enabled: true
+        className: nginx
+        hosts:
+          - host: quay.kubesoar.com
+            paths:
+              - path: /
+                pathType: Prefix
+        tls:
+          - secretName: quay-tls-cert
+            hosts:
+              - quay.kubesoar.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.rules[0].host
+          value: quay.kubesoar.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: quay-tls-cert

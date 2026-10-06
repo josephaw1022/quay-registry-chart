@@ -1,0 +1,21 @@
+apiVersion: v2
+name: quay-registry
+description: CNCF-compliant Helm Chart for Red Hat Project Quay Enterprise Container Registry
+type: application
+version: 0.1.0
+appVersion: "v3.13.0"
+keywords:
+  - quay
+  - container-registry
+  - docker
+  - oci
+  - security
+  - cncf
+home: https://github.com/josephaw1022/quay-registry-chart
+sources:
+  - https://github.com/quay/quay
+  - https://github.com/quay/clair
+icon: https://raw.githubusercontent.com/quay/quay/master/static/img/quay_logo.png
+maintainers:
+  - name: josephaw1022
+    url: https://github.com/josephaw1022
