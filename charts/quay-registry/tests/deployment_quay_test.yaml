@@ -55,11 +55,14 @@ tests:
           path: spec.template.spec.containers[0].resources.requests.memory
           value: 2Gi
 
-  - it: should support custom database existingSecret
+  - it: should support custom database and redis existingSecrets
     set:
       database:
         existingSecret: my-custom-db-secret
         existingSecretUriKey: CONNECTION_STRING
+      redis:
+        existingSecret: my-valkey-secret
+        existingSecretPasswordKey: valkey-password
     asserts:
       - contains:
           path: spec.template.spec.initContainers[0].env
@@ -69,6 +72,14 @@ tests:
               secretKeyRef:
                 name: my-custom-db-secret
                 key: CONNECTION_STRING
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: QUAY_REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: my-valkey-secret
+                key: valkey-password
 
   - it: should mount pre-existing config bundle secret directly when config.existingSecret is set
     set:

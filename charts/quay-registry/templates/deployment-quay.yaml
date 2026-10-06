@@ -56,6 +56,10 @@ spec:
               if [ -n "$CLAIR_PSK_BASE64" ]; then
                 echo "SECURITY_SCANNER_V4_PSK: \"$CLAIR_PSK_BASE64\"" >> /conf/stack/config.yaml
               fi
+              if [ -n "$QUAY_REDIS_PASSWORD" ]; then
+                sed -i "/BUILDLOGS_REDIS:/a\  password: \"$QUAY_REDIS_PASSWORD\"" /conf/stack/config.yaml
+                sed -i "/USER_EVENTS_REDIS:/a\  password: \"$QUAY_REDIS_PASSWORD\"" /conf/stack/config.yaml
+              fi
 
               if [ -f /tmp/tls/tls.crt ] && [ -f /tmp/tls/tls.key ]; then
                 cp /tmp/tls/tls.crt /conf/stack/ssl.cert
@@ -86,6 +90,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "quay-registry.secretName" . }}
                   key: DB_URI
+            {{- end }}
+            {{- if .Values.redis.existingSecret }}
+            - name: QUAY_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.existingSecret }}
+                  key: {{ .Values.redis.existingSecretPasswordKey | default "password" }}
             {{- end }}
             {{- if .Values.config.features.securityScanner }}
             - name: CLAIR_PSK_BASE64
