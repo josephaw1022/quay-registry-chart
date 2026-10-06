@@ -26,18 +26,20 @@ CNCF-compliant Helm Chart to deploy [Project Quay](https://github.com/quay/quay)
 
 ## Quickstart
 
-### 1. Create Database Secret
+### 1. Create Secrets Beforehand
 
-Create a Kubernetes Secret containing your PostgreSQL connection string:
+Create Kubernetes Secrets for your pre-existing PostgreSQL database and Valkey / Redis instance:
 
 ```bash
+# 1. PostgreSQL connection secret for Quay
 kubectl create secret generic quay-postgres-secret \
   --from-literal=DB_URI="postgresql://quay:quaypass@postgres.example.com:5432/quay"
-```
 
-For Clair (if enabled):
+# 2. Valkey / Redis password secret (if authentication is enabled)
+kubectl create secret generic quay-valkey-secret \
+  --from-literal=password="valkeypass"
 
-```bash
+# 3. PostgreSQL connection secret for Clair (if Clair is enabled)
 kubectl create secret generic quay-clair-postgres-secret \
   --from-literal=CLAIR_DB_URI="host=postgres.example.com port=5432 dbname=clair user=quay password=quaypass sslmode=disable"
 ```
@@ -51,6 +53,7 @@ helm install my-quay oci://ghcr.io/josephaw1022/charts/quay-registry \
   --set database.existingSecret="quay-postgres-secret" \
   --set database.existingSecretUriKey="DB_URI" \
   --set redis.host="quay-valkey.example.com" \
+  --set redis.existingSecret="quay-valkey-secret" \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host="quay.example.com"
 ```

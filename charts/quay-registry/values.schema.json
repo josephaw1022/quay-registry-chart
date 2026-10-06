@@ -241,6 +241,14 @@
           "type": "integer",
           "default": 6379
         },
+        "existingSecret": {
+          "type": "string",
+          "description": "Pre-existing Kubernetes secret containing Valkey/Redis password"
+        },
+        "existingSecretPasswordKey": {
+          "type": "string",
+          "default": "password"
+        },
         "password": {
           "type": "string"
         }

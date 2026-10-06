@@ -101,11 +101,11 @@ persistence:
 # ==============================================================================
 # Database Configuration
 # NOTE: PostgreSQL is NOT packaged with this chart.
-# You must provide connection credentials to an external or pre-existing PostgreSQL database.
+# Database secrets are expected to be created beforehand.
 # ==============================================================================
 database:
   # Name of pre-existing Kubernetes Secret containing the database connection URI
-  # Recommended for production deployments.
+  # (Expected to be created beforehand)
   existingSecret: ""
   # Key inside existingSecret containing the connection string (e.g. postgresql://user:pass@host:5432/dbname)
   existingSecretUriKey: "DB_URI"
@@ -115,12 +115,16 @@ database:
 # ==============================================================================
 # Redis / Valkey External Cache Configuration
 # NOTE: Valkey / Redis is NOT packaged with this chart.
-# Configure connection to an external or pre-existing Redis/Valkey instance.
+# Redis/Valkey secrets (if password protected) are expected to be created beforehand.
 # ==============================================================================
 redis:
   # Hostname or IP of the external Redis / Valkey instance
   host: "quay-valkey.example.com"
   port: 6379
+  # Pre-existing secret containing Redis/Valkey password (expected to be created beforehand)
+  existingSecret: ""
+  existingSecretPasswordKey: "password"
+  # Direct password string fallback (if not using secret)
   password: ""
 
 # ==============================================================================
